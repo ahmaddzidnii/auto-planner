@@ -7,24 +7,11 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import type {
-  SprintPlanningInput,
-  SprintResource,
-  SprintTaskInput,
-} from "@/features/planner/types";
+import type { SprintPlanningInput, SprintResource, SprintTaskInput } from "@/features/planner/types";
+import { IconPlus, IconTrash } from "@tabler/icons-react";
 
-const RESOURCE_LEVELS: SprintPlanningInput["fullstack_level"][] = [
-  "junior",
-  "mid",
-  "senior",
-];
-const RESOURCE_SKILLS: SprintResource["skill"][] = [
-  "backend",
-  "frontend",
-  "analist",
-  "devops",
-  "qa",
-];
+const RESOURCE_LEVELS: SprintPlanningInput["fullstack_level"][] = ["junior", "mid", "senior"];
+const RESOURCE_SKILLS: SprintResource["skill"][] = ["backend", "frontend", "analist", "devops", "qa"];
 const PRIORITIES: SprintTaskInput["priority"][] = ["low", "medium", "high"];
 
 function getTodayIso(): string {
@@ -41,7 +28,7 @@ function createResource(): SprintResource {
 
 function createTask(index: number): SprintTaskInput {
   return {
-    id: `task-${index + 1}`,
+    id: `TASK-${index + 1}`,
     name: "",
     description: "",
     priority: "medium",
@@ -75,49 +62,22 @@ export function PlannerDashboard() {
     },
   });
 
-  const {
-    fields: resourceFields,
-    append: appendResource,
-    remove: removeResource,
-  } = useFieldArray({ control, name: "resources" });
+  const { fields: resourceFields, append: appendResource, remove: removeResource } = useFieldArray({ control, name: "resources" });
 
-  const {
-    fields: taskFields,
-    append: appendTask,
-    remove: removeTask,
-  } = useFieldArray({ control, name: "tasks" });
+  const { fields: taskFields, append: appendTask, remove: removeTask } = useFieldArray({ control, name: "tasks" });
 
   const soloFullstack = watch("solo_fullstack");
-  const fullstackLevel = watch("fullstack_level");
-  const sprintDurationWeeks = watch("sprint_duration_weeks");
-  const resources = watch("resources");
-
-  const effectiveResources = soloFullstack
-    ? [
-        {
-          level: fullstackLevel,
-          skill: "fullstack" as const,
-          quantity: 1,
-        },
-      ]
-    : resources;
 
   return (
     <main className="mx-auto grid w-[min(1180px,calc(100%-1rem))] gap-4 px-1 py-4 sm:w-[min(1180px,calc(100%-2rem))] sm:px-0 sm:py-8">
       <form className="grid gap-4">
         <section className="grid gap-4 border border-border bg-card p-4">
           <div>
-            <h2 className="text-sm font-semibold">Data Sprint</h2>
-            <p className="text-xs text-muted-foreground">
-              Definisikan nama sprint, durasi, tanggal mulai, dan kapasitas
-              resource.
-            </p>
+            <h2 className="text-sm font-semibold">Informasi Proyek/Sprint</h2>
           </div>
 
           <label className="grid gap-1.5">
-            <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-              Nama Sprint
-            </span>
+            <span className="text-[11px] font-semibold  tracking-[0.08em] text-muted-foreground">Nama</span>
             <Input
               {...register("sprint_name")}
               placeholder="Sprint 1 - Authentication"
@@ -126,16 +86,15 @@ export function PlannerDashboard() {
 
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="grid gap-1.5">
-              <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                Sprint Start Date
-              </span>
-              <Input type="date" {...register("sprint_start_date")} />
+              <span className="text-[11px] font-semibold  tracking-[0.08em] text-muted-foreground">Tanggal dimulai</span>
+              <Input
+                type="date"
+                {...register("sprint_start_date")}
+              />
             </label>
 
             <label className="grid gap-1.5">
-              <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                Durasi Sprint (minggu)
-              </span>
+              <span className="text-[11px] font-semibold  tracking-[0.08em] text-muted-foreground">Durasi (minggu)</span>
               <Input
                 type="number"
                 min={1}
@@ -147,26 +106,29 @@ export function PlannerDashboard() {
             </label>
           </div>
 
+          <div>
+            <h3 className="text-xs font-semibold">Resource</h3>
+          </div>
+
           <label className="flex items-center gap-2 text-xs font-medium">
             <Checkbox {...register("solo_fullstack")} />
-            <span>Solo fullstack mode</span>
+            <span>Perusahaan saya tidak memiliki divisi</span>
           </label>
 
           {soloFullstack ? (
             <div className="grid gap-2 border border-border bg-muted/30 p-3">
-              <div>
-                <h3 className="text-xs font-semibold">Resource tunggal</h3>
-                <p className="text-xs text-muted-foreground">
-                  Mode ini otomatis dianggap sebagai 1 fullstack developer.
-                </p>
-              </div>
               <label className="grid gap-1.5">
-                <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                  Level Developer
-                </span>
+                <span className="text-[11px] font-semibold  tracking-[0.08em] text-muted-foreground">Level anda</span>
+                <p className="text-xs text-muted-foreground">
+                  kami akan mengasumsikan bahwa anda adalah satu-satunya resource yang tersedia untuk mengerjakan semua task yang ada. Kami akan
+                  menyesuaikan estimasi waktu pengerjaan berdasarkan level keahlian fullstack yang anda pilih.
+                </p>
                 <Select {...register("fullstack_level")}>
                   {RESOURCE_LEVELS.map((level) => (
-                    <option key={level} value={level}>
+                    <option
+                      key={level}
+                      value={level}
+                    >
                       {level}
                     </option>
                   ))}
@@ -175,14 +137,6 @@ export function PlannerDashboard() {
             </div>
           ) : (
             <div className="grid gap-3">
-              <div>
-                <h3 className="text-xs font-semibold">Resource developer</h3>
-                <p className="text-xs text-muted-foreground">
-                  Tambahkan beberapa kombinasi level dan skill sesuai komposisi
-                  tim sprint.
-                </p>
-              </div>
-
               {resourceFields.map((resource, index) => (
                 <article
                   key={resource.id}
@@ -201,15 +155,14 @@ export function PlannerDashboard() {
                       }}
                       disabled={resourceFields.length === 1}
                     >
+                      <IconTrash className="size-4" />
                       Hapus
                     </Button>
                   </div>
 
                   <div className="grid gap-2 sm:grid-cols-3">
                     <label className="grid gap-1.5">
-                      <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                        Quantity
-                      </span>
+                      <span className="text-[11px] font-semibold  tracking-[0.08em] text-muted-foreground">Quantity</span>
                       <Input
                         type="number"
                         min={1}
@@ -220,12 +173,13 @@ export function PlannerDashboard() {
                     </label>
 
                     <label className="grid gap-1.5">
-                      <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                        Level
-                      </span>
+                      <span className="text-[11px] font-semibold  tracking-[0.08em] text-muted-foreground">Level</span>
                       <Select {...register(`resources.${index}.level`)}>
                         {RESOURCE_LEVELS.map((level) => (
-                          <option key={level} value={level}>
+                          <option
+                            key={level}
+                            value={level}
+                          >
                             {level}
                           </option>
                         ))}
@@ -233,12 +187,13 @@ export function PlannerDashboard() {
                     </label>
 
                     <label className="grid gap-1.5">
-                      <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                        Keahlian
-                      </span>
+                      <span className="text-[11px] font-semibold  tracking-[0.08em] text-muted-foreground">Keahlian</span>
                       <Select {...register(`resources.${index}.skill`)}>
                         {RESOURCE_SKILLS.map((skill) => (
-                          <option key={skill} value={skill}>
+                          <option
+                            key={skill}
+                            value={skill}
+                          >
                             {skill}
                           </option>
                         ))}
@@ -254,6 +209,7 @@ export function PlannerDashboard() {
                 size="sm"
                 onClick={() => appendResource(createResource())}
               >
+                <IconPlus className="size-4" />
                 Tambah Resource
               </Button>
             </div>
@@ -262,10 +218,10 @@ export function PlannerDashboard() {
 
         <section className="grid gap-4 border border-border bg-card p-4">
           <div>
-            <h2 className="text-sm font-semibold">Multiple Task</h2>
+            <h2 className="text-sm font-semibold">Task</h2>
             <p className="text-xs text-muted-foreground">
-              Jelaskan detail teknis selengkap mungkin agar AI bisa menganalisis
-              kompleksitas secara objektif.
+              Jelaskan setiap task secara teknis sedetail mungkin agar analisanya lebih akurat. Sertakan framework, library, integrasi, API, flow,
+              constraint, dan dependency jika ada.
             </p>
           </div>
 
@@ -275,8 +231,7 @@ export function PlannerDashboard() {
                 key={task.id}
                 className="grid gap-3 border border-border bg-muted/20 p-3"
               >
-                <div className="flex items-center justify-between gap-2">
-                  <strong className="text-xs">Task {index + 1}</strong>
+                <div className="flex justify-end gap-2">
                   <Button
                     type="button"
                     variant="ghost"
@@ -288,15 +243,14 @@ export function PlannerDashboard() {
                     }}
                     disabled={taskFields.length === 1}
                   >
+                    <IconTrash className="size-4" />
                     Hapus
                   </Button>
                 </div>
 
                 <div className="grid gap-2 sm:grid-cols-2">
                   <label className="grid gap-1.5">
-                    <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                      Id Task
-                    </span>
+                    <span className="text-[11px] font-semibold  tracking-[0.08em] text-muted-foreground">Id Task</span>
                     <Input
                       {...register(`tasks.${index}.id`)}
                       placeholder="task-auth-01"
@@ -304,9 +258,7 @@ export function PlannerDashboard() {
                   </label>
 
                   <label className="grid gap-1.5 sm:col-span-2">
-                    <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                      Nama Task
-                    </span>
+                    <span className="text-[11px] font-semibold  tracking-[0.08em] text-muted-foreground">Nama Task</span>
                     <Input
                       {...register(`tasks.${index}.name`)}
                       placeholder="Implement JWT authentication"
@@ -314,9 +266,7 @@ export function PlannerDashboard() {
                   </label>
 
                   <label className="grid gap-1.5 sm:col-span-2">
-                    <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                      Deskripsi Teknis
-                    </span>
+                    <span className="text-[11px] font-semibold  tracking-[0.08em] text-muted-foreground">Deskripsi Teknis</span>
                     <Textarea
                       rows={4}
                       {...register(`tasks.${index}.description`)}
@@ -325,12 +275,13 @@ export function PlannerDashboard() {
                   </label>
 
                   <label className="grid gap-1.5">
-                    <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                      Prioritas
-                    </span>
+                    <span className="text-[11px] font-semibold  tracking-[0.08em] text-muted-foreground">Prioritas</span>
                     <Select {...register(`tasks.${index}.priority`)}>
                       {PRIORITIES.map((priority) => (
-                        <option key={priority} value={priority}>
+                        <option
+                          key={priority}
+                          value={priority}
+                        >
                           {priority}
                         </option>
                       ))}
@@ -345,17 +296,23 @@ export function PlannerDashboard() {
             <Button
               type="button"
               variant="outline"
+              className="w-full"
               size="sm"
               onClick={() => appendTask(createTask(taskFields.length))}
             >
-              Tambah Task
+              <IconPlus className="size-4" /> Tambah Task
             </Button>
           </div>
         </section>
 
         <div className="mt-5 flex justify-center">
-          <Button type="button" size="lg" disabled>
-            Generate Analysis
+          <Button
+            type="button"
+            size="lg"
+            disabled
+            className="w-full"
+          >
+            Analisa tugas sekarang
           </Button>
         </div>
       </form>
