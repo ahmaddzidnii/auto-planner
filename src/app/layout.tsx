@@ -7,7 +7,10 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppNavbar } from "@/components/app-navbar";
 
-const jetbrainsMono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono" });
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-mono",
+});
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -20,8 +23,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "AI Project Planner",
-  description: "AI-Based Software Project Time Estimation System",
+  title: "AI Sprint Planner",
+  description:
+    "AI sprint analyzer untuk resource developer, multiple task, dan Gantt chart otomatis",
 };
 
 export default function RootLayout({
@@ -31,8 +35,14 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="en"
-      className={cn("h-full", "antialiased", geistSans.variable, geistMono.variable, jetbrainsMono.variable)}
+      lang="id"
+      className={cn(
+        "h-full",
+        "antialiased",
+        geistSans.variable,
+        geistMono.variable,
+        jetbrainsMono.variable,
+      )}
     >
       <body className="min-h-full flex flex-col">
         <TooltipProvider>

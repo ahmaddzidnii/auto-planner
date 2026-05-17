@@ -49,16 +49,17 @@ export function GanttChart({ tasks }: GanttChartProps) {
   }, [tasks]);
 
   return (
-    <section className="planner-panel">
-      <div className="planner-panel__header">
-        <h2>Project Timeline (Gantt Chart)</h2>
-        <p>Timeline disusun otomatis dari durasi subtask AI.</p>
+    <section className="grid gap-3 border border-border bg-card p-4">
+      <div>
+        <h2 className="text-sm font-semibold">
+          Project Timeline (Gantt Chart)
+        </h2>
+        <p className="text-xs text-muted-foreground">
+          Timeline disusun otomatis berdasarkan hasil analisis sprint.
+        </p>
       </div>
-      <div className="gantt-scroll">
-        <div
-          ref={hostRef}
-          className="gantt-host"
-        />
+      <div className="overflow-x-auto">
+        <div ref={hostRef} className="min-w-180" />
       </div>
     </section>
   );

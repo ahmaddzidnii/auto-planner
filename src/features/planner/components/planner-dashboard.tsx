@@ -1,306 +1,364 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useFieldArray, useForm } from "react-hook-form";
 
-import { GanttChart } from "@/features/planner/components/gantt-chart";
-import { buildSequentialTimeline } from "@/features/planner/timeline";
-import type { EstimateOutput, PlannerInput, SprintOutput } from "@/features/planner/types";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import type {
+  SprintPlanningInput,
+  SprintResource,
+  SprintTaskInput,
+} from "@/features/planner/types";
 
-const defaultForm: PlannerInput = {
-  task_name: "",
-  description: "",
-  complexity: 5,
-  priority: "medium",
-  developer_level: "mid",
+const RESOURCE_LEVELS: SprintPlanningInput["fullstack_level"][] = [
+  "junior",
+  "mid",
+  "senior",
+];
+const RESOURCE_SKILLS: SprintResource["skill"][] = [
+  "backend",
+  "frontend",
+  "analist",
+  "devops",
+  "qa",
+];
+const PRIORITIES: SprintTaskInput["priority"][] = ["low", "medium", "high"];
+
+function getTodayIso(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function createResource(): SprintResource {
+  return {
+    level: "mid",
+    skill: "backend",
+    quantity: 1,
+  };
+}
+
+function createTask(index: number): SprintTaskInput {
+  return {
+    id: `task-${index + 1}`,
+    name: "",
+    description: "",
+    priority: "medium",
+  };
+}
+
+type PlannerFormValues = {
+  sprint_name: string;
+  sprint_start_date: string;
+  sprint_duration_weeks: number;
+  include_weekends: boolean;
+  holiday_dates_raw: string;
+  solo_fullstack: boolean;
+  fullstack_level: SprintPlanningInput["fullstack_level"];
+  resources: SprintResource[];
+  tasks: SprintTaskInput[];
 };
 
 export function PlannerDashboard() {
-  const [form, setForm] = useState<PlannerInput>(defaultForm);
-  const [teamCapacity, setTeamCapacity] = useState(40);
-  const [sprintDays, setSprintDays] = useState(7);
+  const { register, control, watch } = useForm<PlannerFormValues>({
+    defaultValues: {
+      sprint_name: "Sprint Discovery",
+      sprint_start_date: getTodayIso(),
+      sprint_duration_weeks: 2,
+      include_weekends: false,
+      holiday_dates_raw: "",
+      solo_fullstack: false,
+      fullstack_level: "mid",
+      resources: [createResource()],
+      tasks: [createTask(0)],
+    },
+  });
 
-  const [estimate, setEstimate] = useState<EstimateOutput | null>(null);
-  const [breakdownOnly, setBreakdownOnly] = useState<EstimateOutput["breakdown"] | null>(null);
-  const [sprintPlan, setSprintPlan] = useState<SprintOutput | null>(null);
+  const {
+    fields: resourceFields,
+    append: appendResource,
+    remove: removeResource,
+  } = useFieldArray({ control, name: "resources" });
 
-  const [loading, setLoading] = useState<"estimate" | "breakdown" | "sprint" | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    fields: taskFields,
+    append: appendTask,
+    remove: removeTask,
+  } = useFieldArray({ control, name: "tasks" });
 
-  const ganttTasks = useMemo(() => {
-    const source = estimate?.breakdown ?? breakdownOnly ?? [];
-    return buildSequentialTimeline(source);
-  }, [estimate, breakdownOnly]);
+  const soloFullstack = watch("solo_fullstack");
+  const fullstackLevel = watch("fullstack_level");
+  const sprintDurationWeeks = watch("sprint_duration_weeks");
+  const resources = watch("resources");
 
-  async function postJson<T>(url: string, payload: unknown): Promise<T> {
-    const response = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-
-    const data = (await response.json()) as T & { error?: string };
-
-    if (!response.ok) {
-      throw new Error(data.error ?? "Terjadi kesalahan saat memproses data.");
-    }
-
-    return data;
-  }
-
-  async function handleEstimate() {
-    setLoading("estimate");
-    setError(null);
-    setSprintPlan(null);
-
-    try {
-      const data = await postJson<EstimateOutput>("/api/estimate", form);
-      setEstimate(data);
-      setBreakdownOnly(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Gagal memproses estimasi.");
-    } finally {
-      setLoading(null);
-    }
-  }
-
-  async function handleBreakdown() {
-    setLoading("breakdown");
-    setError(null);
-    setSprintPlan(null);
-
-    try {
-      const data = await postJson<{ breakdown: EstimateOutput["breakdown"] }>("/api/breakdown", form);
-      setBreakdownOnly(data.breakdown);
-      setEstimate(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Gagal memproses breakdown.");
-    } finally {
-      setLoading(null);
-    }
-  }
-
-  async function handleSprint() {
-    const tasks = estimate?.breakdown ?? breakdownOnly;
-    if (!tasks || tasks.length === 0) {
-      setError("Generate estimation atau breakdown dulu sebelum sprint recommendation.");
-      return;
-    }
-
-    setLoading("sprint");
-    setError(null);
-
-    try {
-      const data = await postJson<SprintOutput>("/api/sprint", {
-        team_capacity_hours: teamCapacity,
-        sprint_days: sprintDays,
-        tasks,
-      });
-
-      setSprintPlan(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Gagal memproses sprint recommendation.");
-    } finally {
-      setLoading(null);
-    }
-  }
+  const effectiveResources = soloFullstack
+    ? [
+        {
+          level: fullstackLevel,
+          skill: "fullstack" as const,
+          quantity: 1,
+        },
+      ]
+    : resources;
 
   return (
-    <main className="planner-shell">
-      <header className="hero-block">
-        <p className="hero-block__kicker">AI-Based Software Project Time Estimation System</p>
-        <h1>AI Project Planner</h1>
-        <p>Estimasi task, breakdown otomatis, sprint recommendation, dan visualisasi Gantt chart dalam satu workflow.</p>
-      </header>
-
-      <section className="planner-grid">
-        <section className="planner-panel">
-          <div className="planner-panel__header">
-            <h2>Task Input</h2>
-            <p>Masukkan task software utama untuk dianalisis oleh AI.</p>
+    <main className="mx-auto grid w-[min(1180px,calc(100%-1rem))] gap-4 px-1 py-4 sm:w-[min(1180px,calc(100%-2rem))] sm:px-0 sm:py-8">
+      <form className="grid gap-4">
+        <section className="grid gap-4 border border-border bg-card p-4">
+          <div>
+            <h2 className="text-sm font-semibold">Data Sprint</h2>
+            <p className="text-xs text-muted-foreground">
+              Definisikan nama sprint, durasi, tanggal mulai, dan kapasitas
+              resource.
+            </p>
           </div>
 
-          <label className="field">
-            <span>Task Name</span>
-            <input
-              value={form.task_name}
-              onChange={(event) => setForm((prev) => ({ ...prev, task_name: event.target.value }))}
-              placeholder="Implement JWT Authentication"
+          <label className="grid gap-1.5">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+              Nama Sprint
+            </span>
+            <Input
+              {...register("sprint_name")}
+              placeholder="Sprint 1 - Authentication"
             />
           </label>
 
-          <label className="field">
-            <span>Description</span>
-            <textarea
-              value={form.description ?? ""}
-              onChange={(event) => setForm((prev) => ({ ...prev, description: event.target.value }))}
-              placeholder="Tambahkan konteks requirement agar estimasi lebih realistis"
-              rows={4}
-            />
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="grid gap-1.5">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                Sprint Start Date
+              </span>
+              <Input type="date" {...register("sprint_start_date")} />
+            </label>
+
+            <label className="grid gap-1.5">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                Durasi Sprint (minggu)
+              </span>
+              <Input
+                type="number"
+                min={1}
+                max={12}
+                {...register("sprint_duration_weeks", {
+                  valueAsNumber: true,
+                })}
+              />
+            </label>
+          </div>
+
+          <label className="flex items-center gap-2 text-xs font-medium">
+            <Checkbox {...register("solo_fullstack")} />
+            <span>Solo fullstack mode</span>
           </label>
 
-          <div className="field-grid">
-            <label className="field">
-              <span>Complexity (1-10)</span>
-              <input
-                type="number"
-                min={1}
-                max={10}
-                value={form.complexity}
-                onChange={(event) => setForm((prev) => ({ ...prev, complexity: Number(event.target.value) || 1 }))}
-              />
-            </label>
-
-            <label className="field">
-              <span>Priority</span>
-              <select
-                value={form.priority}
-                onChange={(event) =>
-                  setForm((prev) => ({
-                    ...prev,
-                    priority: event.target.value as PlannerInput["priority"],
-                  }))
-                }
-              >
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-              </select>
-            </label>
-
-            <label className="field">
-              <span>Developer Level</span>
-              <select
-                value={form.developer_level}
-                onChange={(event) =>
-                  setForm((prev) => ({
-                    ...prev,
-                    developer_level: event.target.value as PlannerInput["developer_level"],
-                  }))
-                }
-              >
-                <option value="junior">Junior</option>
-                <option value="mid">Mid</option>
-                <option value="senior">Senior</option>
-              </select>
-            </label>
-          </div>
-
-          <div className="actions">
-            <button
-              type="button"
-              onClick={handleEstimate}
-              disabled={loading !== null}
-            >
-              {loading === "estimate" ? "Generating..." : "Generate Estimate"}
-            </button>
-            <button
-              type="button"
-              onClick={handleBreakdown}
-              disabled={loading !== null}
-            >
-              {loading === "breakdown" ? "Generating..." : "Generate Breakdown"}
-            </button>
-          </div>
-        </section>
-
-        <section className="planner-panel">
-          <div className="planner-panel__header">
-            <h2>Sprint Recommendation</h2>
-            <p>Gunakan output breakdown untuk memilih task yang masuk sprint.</p>
-          </div>
-
-          <div className="field-grid">
-            <label className="field">
-              <span>Team Capacity (hours)</span>
-              <input
-                type="number"
-                min={1}
-                value={teamCapacity}
-                onChange={(event) => setTeamCapacity(Number(event.target.value) || 1)}
-              />
-            </label>
-            <label className="field">
-              <span>Sprint Days</span>
-              <input
-                type="number"
-                min={1}
-                max={30}
-                value={sprintDays}
-                onChange={(event) => setSprintDays(Number(event.target.value) || 1)}
-              />
-            </label>
-          </div>
-
-          <button
-            type="button"
-            onClick={handleSprint}
-            disabled={loading !== null}
-          >
-            {loading === "sprint" ? "Generating..." : "Generate Sprint Recommendation"}
-          </button>
-
-          {sprintPlan ? (
-            <div className="result-card">
-              <h3>Sprint Plan</h3>
-              <p>
-                Total: <strong>{sprintPlan.total_hours} jam</strong> | Remaining: {sprintPlan.remaining_hours} jam
-              </p>
-              <ul>
-                {sprintPlan.recommended_tasks.map((task) => (
-                  <li key={task.name}>
-                    {task.name} ({task.duration_hours} jam)
-                  </li>
-                ))}
-              </ul>
-              <p>{sprintPlan.rationale}</p>
-            </div>
-          ) : null}
-        </section>
-      </section>
-
-      {error ? <p className="error-text">{error}</p> : null}
-
-      {estimate ? (
-        <section className="planner-panel">
-          <div className="planner-panel__header">
-            <h2>AI Estimation Result</h2>
-          </div>
-          <div className="kpi-grid">
-            <article className="result-card">
-              <h3>Estimated Hours</h3>
-              <p>{estimate.estimated_hours} jam</p>
-            </article>
-            <article className="result-card">
-              <h3>Risk Level</h3>
-              <p>{estimate.risk}</p>
-            </article>
-            <article className="result-card">
-              <h3>Rationale</h3>
-              <p>{estimate.rationale}</p>
-            </article>
-          </div>
-        </section>
-      ) : null}
-
-      {(estimate?.breakdown ?? breakdownOnly) ? (
-        <section className="planner-panel">
-          <div className="planner-panel__header">
-            <h2>Task Breakdown</h2>
-          </div>
-          <ul className="breakdown-list">
-            {(estimate?.breakdown ?? breakdownOnly ?? []).map((task) => (
-              <li key={task.name}>
-                <span>{task.name}</span>
-                <span>
-                  {task.duration_hours} jam · risiko {task.risk}
+          {soloFullstack ? (
+            <div className="grid gap-2 border border-border bg-muted/30 p-3">
+              <div>
+                <h3 className="text-xs font-semibold">Resource tunggal</h3>
+                <p className="text-xs text-muted-foreground">
+                  Mode ini otomatis dianggap sebagai 1 fullstack developer.
+                </p>
+              </div>
+              <label className="grid gap-1.5">
+                <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                  Level Developer
                 </span>
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
+                <Select {...register("fullstack_level")}>
+                  {RESOURCE_LEVELS.map((level) => (
+                    <option key={level} value={level}>
+                      {level}
+                    </option>
+                  ))}
+                </Select>
+              </label>
+            </div>
+          ) : (
+            <div className="grid gap-3">
+              <div>
+                <h3 className="text-xs font-semibold">Resource developer</h3>
+                <p className="text-xs text-muted-foreground">
+                  Tambahkan beberapa kombinasi level dan skill sesuai komposisi
+                  tim sprint.
+                </p>
+              </div>
 
-      <GanttChart tasks={ganttTasks} />
+              {resourceFields.map((resource, index) => (
+                <article
+                  key={resource.id}
+                  className="grid gap-3 border border-border bg-muted/20 p-3"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <strong className="text-xs">Resource {index + 1}</strong>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="xs"
+                      onClick={() => {
+                        if (resourceFields.length > 1) {
+                          removeResource(index);
+                        }
+                      }}
+                      disabled={resourceFields.length === 1}
+                    >
+                      Hapus
+                    </Button>
+                  </div>
+
+                  <div className="grid gap-2 sm:grid-cols-3">
+                    <label className="grid gap-1.5">
+                      <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                        Quantity
+                      </span>
+                      <Input
+                        type="number"
+                        min={1}
+                        {...register(`resources.${index}.quantity`, {
+                          valueAsNumber: true,
+                        })}
+                      />
+                    </label>
+
+                    <label className="grid gap-1.5">
+                      <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                        Level
+                      </span>
+                      <Select {...register(`resources.${index}.level`)}>
+                        {RESOURCE_LEVELS.map((level) => (
+                          <option key={level} value={level}>
+                            {level}
+                          </option>
+                        ))}
+                      </Select>
+                    </label>
+
+                    <label className="grid gap-1.5">
+                      <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                        Keahlian
+                      </span>
+                      <Select {...register(`resources.${index}.skill`)}>
+                        {RESOURCE_SKILLS.map((skill) => (
+                          <option key={skill} value={skill}>
+                            {skill}
+                          </option>
+                        ))}
+                      </Select>
+                    </label>
+                  </div>
+                </article>
+              ))}
+
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => appendResource(createResource())}
+              >
+                Tambah Resource
+              </Button>
+            </div>
+          )}
+        </section>
+
+        <section className="grid gap-4 border border-border bg-card p-4">
+          <div>
+            <h2 className="text-sm font-semibold">Multiple Task</h2>
+            <p className="text-xs text-muted-foreground">
+              Jelaskan detail teknis selengkap mungkin agar AI bisa menganalisis
+              kompleksitas secara objektif.
+            </p>
+          </div>
+
+          <div className="grid gap-3">
+            {taskFields.map((task, index) => (
+              <article
+                key={task.id}
+                className="grid gap-3 border border-border bg-muted/20 p-3"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <strong className="text-xs">Task {index + 1}</strong>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="xs"
+                    onClick={() => {
+                      if (taskFields.length > 1) {
+                        removeTask(index);
+                      }
+                    }}
+                    disabled={taskFields.length === 1}
+                  >
+                    Hapus
+                  </Button>
+                </div>
+
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <label className="grid gap-1.5">
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                      Id Task
+                    </span>
+                    <Input
+                      {...register(`tasks.${index}.id`)}
+                      placeholder="task-auth-01"
+                    />
+                  </label>
+
+                  <label className="grid gap-1.5 sm:col-span-2">
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                      Nama Task
+                    </span>
+                    <Input
+                      {...register(`tasks.${index}.name`)}
+                      placeholder="Implement JWT authentication"
+                    />
+                  </label>
+
+                  <label className="grid gap-1.5 sm:col-span-2">
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                      Deskripsi Teknis
+                    </span>
+                    <Textarea
+                      rows={4}
+                      {...register(`tasks.${index}.description`)}
+                      placeholder="Jelaskan framework, library, integrasi, API, flow, constraint, dan dependencynya secara lengkap."
+                    />
+                  </label>
+
+                  <label className="grid gap-1.5">
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                      Prioritas
+                    </span>
+                    <Select {...register(`tasks.${index}.priority`)}>
+                      {PRIORITIES.map((priority) => (
+                        <option key={priority} value={priority}>
+                          {priority}
+                        </option>
+                      ))}
+                    </Select>
+                  </label>
+                </div>
+              </article>
+            ))}
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => appendTask(createTask(taskFields.length))}
+            >
+              Tambah Task
+            </Button>
+          </div>
+        </section>
+
+        <div className="mt-5 flex justify-center">
+          <Button type="button" size="lg" disabled>
+            Generate Analysis
+          </Button>
+        </div>
+      </form>
     </main>
   );
 }
