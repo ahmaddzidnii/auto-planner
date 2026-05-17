@@ -2,12 +2,12 @@ export type PriorityLevel = "low" | "medium" | "high";
 export type DeveloperLevel = "junior" | "mid" | "senior";
 export type RiskLevel = "low" | "medium" | "high";
 export type ResourceSkill =
-  | "backend"
-  | "frontend"
-  | "analist"
-  | "devops"
-  | "qa"
-  | "fullstack";
+  | "Backend"
+  | "Frontend"
+  | "System Analyst"
+  | "DevOps"
+  | "Quality Assurance"
+  | "Fullstack";
 export type TaskComplexity = "low" | "medium" | "high";
 
 export type SprintResource = {
@@ -31,8 +31,6 @@ export type SprintPlanningInput = {
   solo_fullstack: boolean;
   fullstack_level: DeveloperLevel;
   tasks: SprintTaskInput[];
-  include_weekends: boolean;
-  holiday_dates: string[];
 };
 
 export type TaskAnalysisOutput = {
