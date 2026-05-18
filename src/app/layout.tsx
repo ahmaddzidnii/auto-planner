@@ -9,6 +9,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { SidebarProvider } from "@/components/ui/sidebar";
 
 import "./globals.css";
+import { ThemeProvider } from "@/components/theme-provider";
 
 const jetbrainsMono = JetBrains_Mono({
   subsets: ["latin"],
@@ -39,18 +40,26 @@ export default function RootLayout({
     <html
       lang="id"
       className={cn("h-full", "antialiased", geistSans.variable, geistMono.variable, jetbrainsMono.variable)}
+      suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col">
-        <TooltipProvider>
-          <SidebarProvider>
-            <AppSidebar />
-            <main className="w-full">
-              <AppNavbar />
-              {children}
-            </main>
-            <Toaster />
-          </SidebarProvider>
-        </TooltipProvider>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <TooltipProvider>
+            <SidebarProvider>
+              <AppSidebar />
+              <main className="w-full">
+                <AppNavbar />
+                {children}
+              </main>
+              <Toaster />
+            </SidebarProvider>
+          </TooltipProvider>
+        </ThemeProvider>
       </body>
     </html>
   );
