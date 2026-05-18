@@ -46,9 +46,9 @@ function createResource(): PlannerResourceFormValue {
   };
 }
 
-function createTask(): PlannerTaskFormValue {
+function createTask(index: number): PlannerTaskFormValue {
   return {
-    id: "",
+    id: generateTaskId(index),
     name: "",
     description: "",
     priority: "",
@@ -107,6 +107,10 @@ function toInput(values: PlannerFormValues): SprintPlanningInput {
   };
 }
 
+function generateTaskId(index: number): string {
+  return `TASK-${String(index + 1).padStart(3, "0")}`;
+}
+
 export function PlannerDashboard() {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -127,7 +131,7 @@ export function PlannerDashboard() {
       solo_fullstack: false,
       fullstack_level: "",
       resources: [createResource()],
-      tasks: [createTask()],
+      tasks: [createTask(0)],
     },
   });
 
@@ -423,7 +427,10 @@ export function PlannerDashboard() {
         <section className="grid gap-4 border border-border bg-card p-4">
           <div>
             <h2 className="text-sm font-semibold">Task</h2>
-            <p className="text-xs text-muted-foreground">Hanya task yang anda kirim yang akan dianalisis. Tidak ada breakdown task otomatis.</p>
+            <p className="text-xs text-muted-foreground">
+              Task adalah pekerjaan yang harus diselesaikan dalam sprint. Berikan deskripsi teknis yang jelas untuk setiap task agar estimasi lebih
+              akurat.
+            </p>
           </div>
 
           <div className="grid gap-3">
@@ -525,7 +532,7 @@ export function PlannerDashboard() {
             variant="outline"
             className="w-full"
             size="sm"
-            onClick={() => appendTask(createTask())}
+            onClick={() => appendTask(createTask(taskFields.length))}
           >
             <IconPlus className="size-4" /> Tambah Task
           </Button>

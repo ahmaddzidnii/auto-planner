@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -28,14 +27,24 @@ export const AppSidebar = () => {
   const { isMobile, setOpenMobile } = useSidebar();
 
   const [history, setHistory] = useState<StoredSprintPlan[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(true);
 
   useEffect(() => {
     let active = true;
 
     async function loadHistory() {
-      const plans = await listSprintPlans();
-      if (active) {
-        setHistory(plans);
+      try {
+        setHistoryLoading(true);
+
+        const plans = await listSprintPlans();
+
+        if (active) {
+          setHistory(plans);
+        }
+      } finally {
+        if (active) {
+          setHistoryLoading(false);
+        }
       }
     }
 
@@ -70,6 +79,7 @@ export const AppSidebar = () => {
       <SidebarContent>
         <SidebarGroup className="group-data-[collapsible=icon]:hidden">
           <SidebarGroupLabel>Riwayat Sprint</SidebarGroupLabel>
+          <div>{historyLoading && <p className="px-2 py-3 text-[11px] text-sidebar-foreground/70">Memuat riwayat sprint...</p>}</div>
           <SidebarGroupContent>
             {history.length === 0 ? (
               <p className="px-2 py-3 text-[11px] text-sidebar-foreground/70">Belum ada sprint tersimpan.</p>

@@ -94,7 +94,7 @@ export function SprintDetailPage() {
 
   useEffect(() => {
     if (!isLoading && !plan) {
-      toast.error("Sprint tidak ditemukan. Data sprint dengan id ini tidak tersedia di IndexedDB.");
+      toast.error("Sprint tidak ditemukan.");
 
       router.replace("/");
     }
