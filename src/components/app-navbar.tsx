@@ -47,7 +47,7 @@ export const AppNavbar = () => {
 
                 <h3 className="mt-1 text-sm font-semibold">AutoPlanner AI</h3>
 
-                <p className="text-xs text-muted-foreground">Sistem perencanaan sprint berbasis AI</p>
+                <p className="text-xs text-muted-foreground">Sistem perencanaan waktu manajemen proyek perangkat lunak berbasis AI</p>
               </div>
 
               <div className="my-2 h-px bg-border" />

@@ -90,17 +90,6 @@ export function SprintDetailPage() {
     return timeline.map((task) => clipTaskToRange(task, monthStart, monthEnd)).filter((task): task is TimelineTask => task !== null);
   }, [plan]);
 
-  const monthLabel = useMemo(() => {
-    if (!plan) {
-      return "";
-    }
-
-    return new Date(`${plan.output.sprint_start_date}T00:00:00`).toLocaleDateString("id-ID", {
-      month: "long",
-      year: "numeric",
-    });
-  }, [plan]);
-
   const router = useRouter();
 
   useEffect(() => {
@@ -194,7 +183,7 @@ export function SprintDetailPage() {
 
       <GanttChart
         tasks={monthBoundTimeline}
-        title={`Gantt Chart Bulan ${monthLabel}`}
+        title="Gantt Chart"
         description="Timeline di bawah difokuskan hanya pada task yang berada di bulan tanggal mulai sprint."
         emptyMessage="Tidak ada task yang jatuh pada bulan ini."
       />
