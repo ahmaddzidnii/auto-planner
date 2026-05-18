@@ -140,7 +140,7 @@ export function buildSprintTimeline(
 
   const timeline: TimelineTask[] = [];
   const endById = new Map<string, Date>();
-  let cursor = new Date(sprintStart);
+  const resourceAllocations = new Map<string, { end: Date; tasks: Set<string> }>();
 
   for (const task of orderedTasks) {
     const dependencyEnds = task.dependencies
@@ -151,9 +151,28 @@ export function buildSprintTimeline(
       dependencyEnds.length > 0
         ? new Date(Math.max(...dependencyEnds.map((value) => value.getTime())))
         : sprintStart;
-    const startCandidate = new Date(
-      Math.max(cursor.getTime(), dependencyAnchor.getTime()),
-    );
+
+    // Tentukan resource key berdasarkan level dan skill
+    const resourceKey = `${task.minimum_level}_${task.minimum_skill}`;
+
+    // Cari waktu earliest start tanpa konflik resource
+    let startCandidate = new Date(dependencyAnchor.getTime());
+    const maxAttempts = 365; // Maksimal 1 tahun ke depan untuk mencari slot
+    let attempts = 0;
+
+    while (attempts < maxAttempts) {
+      const currentResource = resourceAllocations.get(resourceKey);
+      
+      // Jika resource tersedia dan tidak ada konflik, gunakan slot ini
+      if (!currentResource || startCandidate.getTime() >= currentResource.end.getTime()) {
+        break;
+      }
+
+      // Jika ada konflik, lanjutkan ke waktu resource selesai
+      startCandidate = new Date(currentResource.end.getTime());
+      attempts++;
+    }
+
     const startDate = advanceToWorkingDay(
       startCandidate,
       options.includeWeekends,
@@ -184,7 +203,17 @@ export function buildSprintTimeline(
     });
 
     endById.set(task.id, endDate);
-    cursor = new Date(endDate);
+
+    // Update resource allocation
+    const existingAllocation = resourceAllocations.get(resourceKey);
+    if (!existingAllocation) {
+      resourceAllocations.set(resourceKey, { end: endDate, tasks: new Set([task.id]) });
+    } else {
+      existingAllocation.tasks.add(task.id);
+      if (endDate.getTime() > existingAllocation.end.getTime()) {
+        existingAllocation.end = endDate;
+      }
+    }
   }
 
   return timeline;
