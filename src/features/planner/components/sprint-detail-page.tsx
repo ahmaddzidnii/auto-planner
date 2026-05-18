@@ -1,10 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
-import { Button } from "@/components/ui/button";
 import { GanttChart } from "@/features/planner/components/gantt-chart";
 import { getSprintPlanById } from "@/features/planner/storage";
 import { buildSprintTimeline } from "@/features/planner/timeline";
