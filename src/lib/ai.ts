@@ -67,7 +67,6 @@ export async function generateGeminiJson<T>(
     schema: z.ZodType<T>,
 ): Promise<T> {
     const apiKey = process.env.GEMINI_API_KEY;
-    const model = process.env.GEMINI_MODEL ?? "gemini-2.0-flash";
 
     if (!apiKey) {
         throw new Error("GEMINI_API_KEY belum diatur di environment.");

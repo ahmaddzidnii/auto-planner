@@ -11,7 +11,7 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { saveSprintPlan } from "@/features/planner/storage";
 import type { SprintPlanningInput, SprintPlanningOutput, SprintResource, SprintTaskInput, StoredSprintPlan } from "@/features/planner/types";
-import { IconPlus, IconTrash } from "@tabler/icons-react";
+import { IconLoader2, IconPlus, IconTrash } from "@tabler/icons-react";
 
 const RESOURCE_LEVELS: SprintPlanningInput["fullstack_level"][] = ["junior", "mid", "senior"];
 
@@ -546,7 +546,7 @@ export function PlannerDashboard() {
             size="lg"
             className="w-full"
             disabled={isSubmitting}
-          >
+          > {isSubmitting && <IconLoader2 className="animate-spin"/>}
             {isSubmitting ? "Menganalisis..." : "Analisa tugas sekarang"}
           </Button>
         </div>
