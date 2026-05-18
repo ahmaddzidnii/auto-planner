@@ -18,9 +18,21 @@ export const SprintResourceSchema = z.object({
 });
 
 export const SprintTaskInputSchema = z.object({
-  id: z.string().trim().min(1).max(40),
-  name: z.string().trim().min(3).max(120),
-  description: z.string().trim().min(10).max(1200),
+  id: z
+    .string()
+    .trim()
+    .min(1, "Id task wajib diisi.")
+    .max(40, "Id task maksimal 40 karakter."),
+  name: z
+    .string()
+    .trim()
+    .min(3, "Nama task minimal 3 karakter.")
+    .max(120, "Nama task maksimal 120 karakter."),
+  description: z
+    .string()
+    .trim()
+    .min(10, "Deskripsi teknis minimal 10 karakter (di luar spasi).")
+    .max(1200, "Deskripsi teknis maksimal 1200 karakter."),
   priority: prioritySchema,
 });
 

@@ -8,31 +8,16 @@ import type {
 
 const KNOWLEDGE_SNIPPETS = [
   {
-    keywords: ["jwt", "authentication", "auth"],
-    notes: [
-      "Setup authentication library and token strategy",
-      "Build middleware/guard for protected routes",
-      "Implement refresh token flow",
-      "Write integration tests for token expiry and invalid token",
-    ],
+    keywords: ["jwt", "auth"],
+    notes: ["Auth lib + token strategy", "Protected routes/middleware", "Refresh token flow"],
   },
   {
-    keywords: ["payment", "gateway", "checkout"],
-    notes: [
-      "Integrate payment provider SDK",
-      "Create secure callback/webhook validation",
-      "Handle retry and failure scenarios",
-      "Test happy path and refund/cancel edge cases",
-    ],
+    keywords: ["payment", "gateway"],
+    notes: ["Payment SDK + webhook validation", "Retry/failure handling"],
   },
   {
-    keywords: ["crud", "user", "dashboard"],
-    notes: [
-      "Define data model and validation",
-      "Build create/read/update/delete endpoints",
-      "Connect UI form and table state",
-      "Add role/permission checks and testing",
-    ],
+    keywords: ["crud", "dashboard"],
+    notes: ["Data model + validation", "CRUD endpoints", "Tests"],
   },
 ];
 
@@ -53,35 +38,18 @@ function injectKnowledge(taskName: string, description?: string): string {
 }
 
 export function buildEstimatePrompt(input: PlannerInput): string {
-  return `Kamu adalah AI software project manager yang fokus pada estimasi task software.
+  return `AI project estimator. For task: "${input.task_name}" (${input.description || 'no description'})
 
-Tugas:
-1) Estimasi durasi realistis dalam jam.
-2) Analisis risiko (low|medium|high).
-3) Breakdown task menjadi subtask kecil.
+Estimate realistic hours, risk (low|medium|high), and 3-8 subtasks.
+Complexity: ${input.complexity}/10, Priority: ${input.priority}, Dev: ${input.developer_level}
 
-Aturan:
-- Gunakan kompleksitas (1-10), prioritas, dan level developer untuk mempengaruhi estimasi.
-- Total durasi breakdown harus mendekati estimated_hours.
-- Jangan beri output markdown, hanya JSON valid.
+Knowledge: ${injectKnowledge(input.task_name, input.description)}
 
-Knowledge Injection:
-${injectKnowledge(input.task_name, input.description)}
-
-Input:
-${JSON.stringify(input, null, 2)}
-
-Output JSON wajib mengikuti schema ini:
+Return JSON only:
 {
   "estimated_hours": number,
-  "risk": "low" | "medium" | "high",
-  "breakdown": [
-    {
-      "name": string,
-      "duration_hours": number,
-      "risk": "low" | "medium" | "high"
-    }
-  ],
+  "risk": "low"|"medium"|"high",
+  "breakdown": [{"name": string, "duration_hours": number, "risk": "low"|"medium"|"high"}],
   "rationale": string
 }`;
 }
@@ -104,37 +72,21 @@ ${JSON.stringify(input, null, 2)}
 Output JSON wajib:
 {
   "breakdown": [
+    {Break down task "${input.task_name}" into 3-8 subtasks. Complexity: ${input.complexity}/10, Dev: ${input.developer_level}
+
+Knowledge: ${injectKnowledge(input.task_name, input.description)}
+
+Return JSON only:
+{
+  "breakdown": [{"name": string, "duration_hours": number, "risk": "low"|"medium"|"high"}JSON.stringify(
     {
-      "name": string,
-      "duration_hours": number,
-      "risk": "low" | "medium" | "high"
-    }
-  ]
-}`;
-}
-
-export function buildSprintPrompt(
-  tasks: SubtaskEstimate[],
-  teamCapacityHours: number,
-  sprintDays: number,
-): string {
-  return `Kamu adalah AI sprint planner untuk software team.
-
-Tugas:
-- Pilih task yang paling masuk akal untuk sprint.
-- Total jam tidak boleh melebihi kapasitas tim.
-- Prioritaskan urutan yang memberi nilai paling tinggi di sprint ini.
-
-Input:
-${JSON.stringify(
-  {
-    sprint_days: sprintDays,
-    team_capacity_hours: teamCapacityHours,
-    tasks,
-  },
-  null,
-  2,
-)}
+      sprint_days: sprintDays,
+      team_capacity_hours: teamCapacityHours,
+      tasks,
+    },
+    null,
+    2,
+  )}
 
 Output JSON wajib:
 {
@@ -186,39 +138,23 @@ function summarizeTasks(tasks: SprintTaskInput[]): string {
 }
 
 export function buildSprintPlanningPrompt(input: SprintPlanningInput): string {
-  return `Kamu adalah AI sprint analyst dan sprint planner untuk tim software.
+  return `Sprint analyst. Analyze ${input.tasks.length} tasks, set complexity/level/skill/hours, find dependencies.
 
-Tujuan:
-1) Analisis setiap task secara objektif berdasarkan deskripsi teknis.
-2) Tentukan complexity (low, medium, high).
-3) Tentukan minimum developer level dan skill minimum.
-4) Estimasi jam pengerjaan per task.
-5) Tentukan dependency antar-task hanya dari konteks task yang diberikan.
-6) Cocokkan hasil analisis dengan kapasitas resource sprint.
+Rules:
+- Frontend (React/UI) vs Backend (API/DB/Auth) skill mapping
+- Min level ≤ max team level  
+- Frontend & Backend for same feature = parallel, no dependency
+- Testing/Integration must depend on UI+API
+- Keep all ${input.tasks.length} tasks, no add/remove
+- JSON only, no markdown
 
-Aturan analisis:
-- Gunakan deskripsi secara teknis, bukan asumsi umum.
-- Jika task menyebut framework, library, integrasi, auth, payment, migrasi data, atau deployment, naikkan complexity bila relevan.
-- Jika task jelas frontend, backend, qa, devops, atau analisis bisnis, tentukan skill minimum yang paling tepat.
-- Jika resource hanya fullstack solo, tetap analisis task seolah-olah task butuh level minimum dan skill minimum, tetapi kapasitas sprint harus dihitung dari resource fullstack tersebut.
-- Dependency harus berupa array id task yang memang ada di input dan hanya task yang logis dikerjakan lebih dulu.
-- Output harus JSON valid tanpa markdown atau komentar.
-
-Sprint summary:
-- Sprint name: ${input.sprint_name}
-- Sprint start date: ${input.sprint_start_date}
-- Sprint duration weeks: ${input.sprint_duration_weeks}
-- Include weekends: ${input.include_weekends}
-- Holiday dates: ${input.holiday_dates.length > 0 ? input.holiday_dates.join(", ") : "none"}
-- Resources: ${summarizeResources(input.resources)}
+Sprint: ${input.sprint_name} | ${input.sprint_start_date} | ${input.sprint_duration_weeks}w | Resources: ${summarizeResources(input.resources)}
+Weekends: ${input.include_weekends ? 'yes' : 'no'} | Holidays: ${input.holiday_dates.length > 0 ? input.holiday_dates.join(', ') : 'none'}
 
 Tasks:
 ${summarizeTasks(input.tasks)}
 
-Estimated capacity hint:
-${summarizeResources(input.resources)}
-
-Output JSON wajib mengikuti format ini:
+Return:
 {
   "sprint_name": string,
   "sprint_start_date": "YYYY-MM-DD",
@@ -226,22 +162,9 @@ Output JSON wajib mengikuti format ini:
   "total_resource_capacity_hours": number,
   "total_estimated_hours": number,
   "remaining_capacity_hours": number,
-  "fit_status": "fit" | "tight" | "over",
+  "fit_status": "fit"|"tight"|"over",
   "resource_summary": string,
   "sprint_rationale": string,
-  "tasks": [
-  {
-    "id": string,
-    "name": string,
-    "description": string,
-    "priority": "low" | "medium" | "high",
-    "complexity": "low" | "medium" | "high",
-    "minimum_level": "junior" | "mid" | "senior",
-    "minimum_skill": "backend" | "frontend" | "analist" | "devops" | "qa" | "fullstack",
-    "estimated_hours": number,
-    "dependencies": [string],
-    "rationale": string
-  }
-  ]
+  "tasks": [{"id": string, "name": string, "description": string, "priority": "low"|"medium"|"high", "complexity": "low"|"medium"|"high", "minimum_level": "junior"|"mid"|"senior", "minimum_skill": "backend"|"frontend"|"analist"|"devops"|"qa"|"fullstack", "estimated_hours": number, "dependencies": [string], "rationale": string}]
 }`;
 }

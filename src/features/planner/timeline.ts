@@ -6,6 +6,10 @@ import type {
 
 const HOURS_PER_DAY = 8;
 
+function toClassToken(value: string): string {
+  return value.replace(/\s+/g, "-");
+}
+
 function toDate(value: string | Date): Date {
   const parsed =
     value instanceof Date ? new Date(value) : new Date(`${value}T00:00:00`);
@@ -174,7 +178,9 @@ export function buildSprintTimeline(
       progress: 0,
       dependencies:
         task.dependencies.length > 0 ? task.dependencies.join(",") : undefined,
-      custom_class: `complexity-${task.complexity} priority-${task.priority}`,
+      custom_class: toClassToken(
+        `complexity-${task.complexity}_priority-${task.priority}`,
+      ),
     });
 
     endById.set(task.id, endDate);
@@ -208,7 +214,7 @@ export function buildSequentialTimeline(
       end: taskEnd,
       progress: 0,
       dependencies: index > 0 ? String(index) : undefined,
-      custom_class: `risk-${task.risk}`,
+      custom_class: toClassToken(`risk-${task.risk}`),
     };
   });
 }

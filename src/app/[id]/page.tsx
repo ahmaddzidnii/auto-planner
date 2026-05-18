@@ -1,11 +1,7 @@
-interface SprintIdPageProps {
-  params: Promise<{
-    id: string;
-  }>;
-}
-const SprintIdPage = async ({ params }: SprintIdPageProps) => {
-  const { id } = await params;
-  return <div>{id}</div>;
+import { SprintDetailPage } from "@/features/planner/components/sprint-detail-page";
+
+const SprintIdPage = () => {
+  return <SprintDetailPage />;
 };
 
 export default SprintIdPage;

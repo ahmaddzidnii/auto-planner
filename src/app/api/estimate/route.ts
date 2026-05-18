@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server";
 
-import { generateLocalEstimate } from "@/features/planner/fallback";
 import { buildEstimatePrompt } from "@/features/planner/prompts";
 import { EstimateOutputSchema, PlannerInputSchema } from "@/features/planner/schemas";
-import { generateGeminiJson, shouldUseLocalFallback } from "@/lib/ai";
+import { generateGeminiJson } from "@/lib/ai";
 
 export const runtime = "nodejs";
 
@@ -17,10 +16,8 @@ export async function POST(request: Request) {
             const estimate = await generateGeminiJson(prompt, EstimateOutputSchema);
             return NextResponse.json(estimate);
         } catch (error) {
-            if (shouldUseLocalFallback(error)) {
-                return NextResponse.json(generateLocalEstimate(input));
-            }
-            throw error;
+            const message = error instanceof Error ? error.message : "Terjadi kesalahan pada estimator.";
+            return NextResponse.json({ error: message }, { status: 500 });
         }
     } catch (error) {
         const message = error instanceof Error ? error.message : "Terjadi kesalahan pada estimator.";

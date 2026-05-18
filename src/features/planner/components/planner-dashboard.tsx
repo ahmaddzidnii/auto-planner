@@ -1,17 +1,28 @@
 "use client";
 
-import { useFieldArray, useForm } from "react-hook-form";
+import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useFieldArray, useForm, useWatch } from "react-hook-form";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import type { SprintPlanningInput, SprintResource, SprintTaskInput } from "@/features/planner/types";
+import { saveSprintPlan } from "@/features/planner/storage";
+import type { SprintPlanningInput, SprintPlanningOutput, SprintResource, SprintTaskInput, StoredSprintPlan } from "@/features/planner/types";
 import { IconPlus, IconTrash } from "@tabler/icons-react";
 
 const RESOURCE_LEVELS: SprintPlanningInput["fullstack_level"][] = ["junior", "mid", "senior"];
-const RESOURCE_SKILLS: SprintResource["skill"][] = ["Backend", "Frontend", "System Analyst", "DevOps", "Quality Assurance"];
+
+const RESOURCE_SKILLS: Array<{ value: SprintResource["skill"]; label: string }> = [
+  { value: "backend", label: "Backend" },
+  { value: "frontend", label: "Frontend" },
+  { value: "analist", label: "System Analyst" },
+  { value: "devops", label: "DevOps" },
+  { value: "qa", label: "Quality Assurance" },
+];
+
 const PRIORITIES: SprintTaskInput["priority"][] = ["low", "medium", "high"];
 
 type PlannerResourceFormValue = {
@@ -56,11 +67,54 @@ type PlannerFormValues = {
   tasks: PlannerTaskFormValue[];
 };
 
+function parseHolidayDates(raw: string): string[] {
+  return raw
+    .split(/[,\n]/)
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0);
+}
+
+function toInput(values: PlannerFormValues): SprintPlanningInput {
+  const holidayDates = parseHolidayDates(values.holiday_dates_raw);
+
+  return {
+    sprint_name: values.sprint_name,
+    sprint_start_date: values.sprint_start_date,
+    sprint_duration_weeks: Number(values.sprint_duration_weeks),
+    resources: values.solo_fullstack
+      ? [
+          {
+            level: values.fullstack_level as SprintResource["level"],
+            skill: "fullstack",
+            quantity: 1,
+          },
+        ]
+      : values.resources.map((resource) => ({
+          level: resource.level as SprintResource["level"],
+          skill: resource.skill as SprintResource["skill"],
+          quantity: Number(resource.quantity),
+        })),
+    solo_fullstack: values.solo_fullstack,
+    fullstack_level: (values.fullstack_level || "mid") as SprintPlanningInput["fullstack_level"],
+    tasks: values.tasks.map((task) => ({
+      id: task.id,
+      name: task.name,
+      description: task.description,
+      priority: task.priority as SprintTaskInput["priority"],
+    })),
+    include_weekends: values.include_weekends,
+    holiday_dates: holidayDates,
+  };
+}
+
 export function PlannerDashboard() {
+  const router = useRouter();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
   const {
     register,
     control,
-    watch,
     handleSubmit,
     formState: { errors },
   } = useForm<PlannerFormValues>({
@@ -81,38 +135,57 @@ export function PlannerDashboard() {
 
   const { fields: taskFields, append: appendTask, remove: removeTask } = useFieldArray({ control, name: "tasks" });
 
-  const soloFullstack = watch("solo_fullstack");
+  const soloFullstack = useWatch({ control, name: "solo_fullstack" }) ?? false;
 
-  const onSubmit = handleSubmit((values) => {
-    const sprintPlanningInput: SprintPlanningInput = {
-      sprint_name: values.sprint_name,
-      sprint_start_date: values.sprint_start_date,
-      sprint_duration_weeks: Number(values.sprint_duration_weeks),
-      resources: values.solo_fullstack
-        ? [
-            {
-              level: values.fullstack_level as SprintResource["level"],
-              skill: "Fullstack",
-              quantity: 1,
-            },
-          ]
-        : values.resources.map((resource) => ({
-            level: resource.level as SprintResource["level"],
-            skill: resource.skill as SprintResource["skill"],
-            quantity: Number(resource.quantity),
-          })),
-      solo_fullstack: values.solo_fullstack,
-      fullstack_level: values.fullstack_level as SprintPlanningInput["fullstack_level"],
-      tasks: values.tasks.map((task) => ({
-        id: task.id,
-        name: task.name,
-        description: task.description,
-        priority: task.priority as SprintTaskInput["priority"],
-      })),
-    };
+  const onSubmit = handleSubmit(async (values) => {
+    setSubmitError(null);
+    setIsSubmitting(true);
 
-    console.log("Sprint planning JSON:", JSON.stringify(sprintPlanningInput, null, 2));
+    try {
+      const sprintPlanningInput = toInput(values);
+      const response = await fetch("/api/sprint", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(sprintPlanningInput),
+      });
+
+      const payload = (await response.json()) as SprintPlanningOutput | { error?: string };
+
+      if (!response.ok) {
+        throw new Error("error" in payload && payload.error ? payload.error : "Gagal menganalisis sprint.");
+      }
+
+      if (typeof crypto === "undefined" || typeof crypto.randomUUID !== "function") {
+        throw new Error("Browser tidak mendukung pembuatan id sprint otomatis.");
+      }
+
+      const sprintId = crypto.randomUUID();
+
+      const storedPlan: StoredSprintPlan = {
+        id: sprintId,
+        created_at: new Date().toISOString(),
+        input: sprintPlanningInput,
+        output: payload as SprintPlanningOutput,
+      };
+
+      await saveSprintPlan(storedPlan);
+      router.push(`/${sprintId}`);
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : "Terjadi kesalahan saat memproses sprint.");
+    } finally {
+      setIsSubmitting(false);
+    }
   });
+
+  const resourceHint = useMemo(() => {
+    if (soloFullstack) {
+      return "Analisis kapasitas dihitung dari 1 Fullstack developer.";
+    }
+
+    return "Tambahkan resource sesuai komposisi tim aktual untuk estimasi kapasitas yang lebih akurat.";
+  }, [soloFullstack]);
 
   return (
     <main className="mx-auto grid w-[min(1180px,calc(100%-1rem))] gap-4 px-1 py-4 sm:w-[min(1180px,calc(100%-2rem))] sm:px-0 sm:py-8">
@@ -126,7 +199,7 @@ export function PlannerDashboard() {
           </div>
 
           <label className="grid gap-1.5">
-            <span className="text-[11px] font-semibold  tracking-[0.08em] text-muted-foreground">Nama</span>
+            <span className="text-[11px] font-semibold tracking-[0.08em] text-muted-foreground">Nama</span>
             <Input
               {...register("sprint_name", {
                 required: "Nama sprint wajib diisi.",
@@ -135,14 +208,13 @@ export function PlannerDashboard() {
                   message: "Nama sprint minimal 3 karakter.",
                 },
               })}
-              placeholder=""
             />
             {errors.sprint_name ? <span className="text-[11px] text-destructive">{errors.sprint_name.message}</span> : null}
           </label>
 
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="grid gap-1.5">
-              <span className="text-[11px] font-semibold  tracking-[0.08em] text-muted-foreground">Tanggal dimulai</span>
+              <span className="text-[11px] font-semibold tracking-[0.08em] text-muted-foreground">Tanggal dimulai</span>
               <Input
                 type="date"
                 {...register("sprint_start_date", {
@@ -153,7 +225,7 @@ export function PlannerDashboard() {
             </label>
 
             <label className="grid gap-1.5">
-              <span className="text-[11px] font-semibold  tracking-[0.08em] text-muted-foreground">Durasi (minggu)</span>
+              <span className="text-[11px] font-semibold tracking-[0.08em] text-muted-foreground">Durasi (minggu)</span>
               <Input
                 type="number"
                 min={1}
@@ -183,8 +255,23 @@ export function PlannerDashboard() {
             </label>
           </div>
 
+          <label className="flex items-center gap-2 text-xs font-medium">
+            <Checkbox {...register("include_weekends")} />
+            <span>Masukkan hari Sabtu dan Minggu sebagai hari kerja sprint</span>
+          </label>
+
+          <label className="grid gap-1.5">
+            <span className="text-[11px] font-semibold tracking-[0.08em] text-muted-foreground">Tanggal libur (opsional)</span>
+            <Textarea
+              rows={2}
+              {...register("holiday_dates_raw")}
+              placeholder="Format YYYY-MM-DD, pisahkan dengan koma atau baris baru"
+            />
+          </label>
+
           <div>
             <h3 className="text-xs font-semibold">Resource</h3>
+            <p className="text-xs text-muted-foreground">{resourceHint}</p>
           </div>
 
           <label className="flex items-center gap-2 text-xs font-medium">
@@ -195,10 +282,9 @@ export function PlannerDashboard() {
           {soloFullstack ? (
             <div className="grid gap-2 border border-border bg-muted/30 p-3">
               <label className="grid gap-1.5">
-                <span className="text-[11px] font-semibold  tracking-[0.08em] text-muted-foreground">Level anda</span>
+                <span className="text-[11px] font-semibold tracking-[0.08em] text-muted-foreground">Level anda</span>
                 <p className="text-xs text-muted-foreground">
-                  kami akan mengasumsikan bahwa anda adalah satu-satunya resource yang tersedia untuk mengerjakan semua task yang ada. Kami akan
-                  menyesuaikan estimasi waktu pengerjaan berdasarkan level keahlian fullstack yang anda pilih.
+                  Kami asumsikan anda adalah satu-satunya resource yang tersedia untuk mengerjakan semua task.
                 </p>
                 <Select
                   {...register("fullstack_level", {
@@ -245,7 +331,7 @@ export function PlannerDashboard() {
 
                   <div className="grid gap-2 sm:grid-cols-3">
                     <label className="grid gap-1.5">
-                      <span className="text-[11px] font-semibold  tracking-[0.08em] text-muted-foreground">Quantity</span>
+                      <span className="text-[11px] font-semibold tracking-[0.08em] text-muted-foreground">Quantity</span>
                       <Input
                         type="number"
                         min={1}
@@ -262,7 +348,7 @@ export function PlannerDashboard() {
                             const parsedValue = Number(value);
 
                             if (!Number.isInteger(parsedValue) || parsedValue < 1) {
-                              return "Quantity resource harus berupa angka bulat minimal 1.";
+                              return "Quantity resource harus angka bulat minimal 1.";
                             }
 
                             return true;
@@ -275,7 +361,7 @@ export function PlannerDashboard() {
                     </label>
 
                     <label className="grid gap-1.5">
-                      <span className="text-[11px] font-semibold  tracking-[0.08em] text-muted-foreground">Level</span>
+                      <span className="text-[11px] font-semibold tracking-[0.08em] text-muted-foreground">Level</span>
                       <Select
                         {...register(`resources.${index}.level`, {
                           validate: (value) => soloFullstack || value !== "" || "Level resource wajib dipilih.",
@@ -297,7 +383,7 @@ export function PlannerDashboard() {
                     </label>
 
                     <label className="grid gap-1.5">
-                      <span className="text-[11px] font-semibold  tracking-[0.08em] text-muted-foreground">Keahlian</span>
+                      <span className="text-[11px] font-semibold tracking-[0.08em] text-muted-foreground">Keahlian</span>
                       <Select
                         {...register(`resources.${index}.skill`, {
                           validate: (value) => soloFullstack || value !== "" || "Keahlian resource wajib dipilih.",
@@ -306,10 +392,10 @@ export function PlannerDashboard() {
                         <option value="">Pilih keahlian</option>
                         {RESOURCE_SKILLS.map((skill) => (
                           <option
-                            key={skill}
-                            value={skill}
+                            key={skill.value}
+                            value={skill.value}
                           >
-                            {skill}
+                            {skill.label}
                           </option>
                         ))}
                       </Select>
@@ -337,10 +423,7 @@ export function PlannerDashboard() {
         <section className="grid gap-4 border border-border bg-card p-4">
           <div>
             <h2 className="text-sm font-semibold">Task</h2>
-            <p className="text-xs text-muted-foreground">
-              Jelaskan setiap task secara teknis sedetail mungkin agar analisanya lebih akurat. Sertakan framework, library, integrasi, API, flow,
-              constraint, dan dependency jika ada.
-            </p>
+            <p className="text-xs text-muted-foreground">Hanya task yang anda kirim yang akan dianalisis. Tidak ada breakdown task otomatis.</p>
           </div>
 
           <div className="grid gap-3">
@@ -368,18 +451,17 @@ export function PlannerDashboard() {
 
                 <div className="grid gap-2 sm:grid-cols-2">
                   <label className="grid gap-1.5">
-                    <span className="text-[11px] font-semibold  tracking-[0.08em] text-muted-foreground">Id Task</span>
+                    <span className="text-[11px] font-semibold tracking-[0.08em] text-muted-foreground">Id Task</span>
                     <Input
                       {...register(`tasks.${index}.id`, {
                         required: "Id task wajib diisi.",
                       })}
-                      placeholder=""
                     />
                     {errors.tasks?.[index]?.id ? <span className="text-[11px] text-destructive">{errors.tasks[index]?.id?.message}</span> : null}
                   </label>
 
                   <label className="grid gap-1.5 sm:col-span-2">
-                    <span className="text-[11px] font-semibold  tracking-[0.08em] text-muted-foreground">Nama Task</span>
+                    <span className="text-[11px] font-semibold tracking-[0.08em] text-muted-foreground">Nama Task</span>
                     <Input
                       {...register(`tasks.${index}.name`, {
                         required: "Nama task wajib diisi.",
@@ -388,23 +470,24 @@ export function PlannerDashboard() {
                           message: "Nama task minimal 3 karakter.",
                         },
                       })}
-                      placeholder=""
                     />
                     {errors.tasks?.[index]?.name ? <span className="text-[11px] text-destructive">{errors.tasks[index]?.name?.message}</span> : null}
                   </label>
 
                   <label className="grid gap-1.5 sm:col-span-2">
-                    <span className="text-[11px] font-semibold  tracking-[0.08em] text-muted-foreground">Deskripsi Teknis</span>
+                    <span className="text-[11px] font-semibold tracking-[0.08em] text-muted-foreground">Deskripsi Teknis</span>
                     <Textarea
                       rows={4}
                       {...register(`tasks.${index}.description`, {
                         required: "Deskripsi teknis wajib diisi.",
-                        minLength: {
-                          value: 10,
-                          message: "Deskripsi teknis minimal 10 karakter.",
+                        validate: (value) => {
+                          if (value.trim().length < 10) {
+                            return "Deskripsi teknis minimal 10 karakter (di luar spasi).";
+                          }
+
+                          return true;
                         },
                       })}
-                      placeholder=""
                     />
                     {errors.tasks?.[index]?.description ? (
                       <span className="text-[11px] text-destructive">{errors.tasks[index]?.description?.message}</span>
@@ -412,7 +495,7 @@ export function PlannerDashboard() {
                   </label>
 
                   <label className="grid gap-1.5">
-                    <span className="text-[11px] font-semibold  tracking-[0.08em] text-muted-foreground">Prioritas</span>
+                    <span className="text-[11px] font-semibold tracking-[0.08em] text-muted-foreground">Prioritas</span>
                     <Select
                       {...register(`tasks.${index}.priority`, {
                         validate: (value) => value !== "" || "Prioritas task wajib dipilih.",
@@ -437,26 +520,27 @@ export function PlannerDashboard() {
             ))}
           </div>
 
-          <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full"
-              size="sm"
-              onClick={() => appendTask(createTask())}
-            >
-              <IconPlus className="size-4" /> Tambah Task
-            </Button>
-          </div>
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full"
+            size="sm"
+            onClick={() => appendTask(createTask())}
+          >
+            <IconPlus className="size-4" /> Tambah Task
+          </Button>
         </section>
 
-        <div className="mt-5 flex justify-center">
+        {submitError ? <p className="text-sm text-destructive">{submitError}</p> : null}
+
+        <div className="mt-2 flex justify-center">
           <Button
             type="submit"
             size="lg"
             className="w-full"
+            disabled={isSubmitting}
           >
-            Analisa tugas sekarang
+            {isSubmitting ? "Menganalisis..." : "Analisa tugas sekarang"}
           </Button>
         </div>
       </form>
