@@ -42,7 +42,7 @@ export function GanttChart({
 
       new Gantt(hostNode, tasks, {
         view_mode: "Day",
-        language: "en",
+        language: "id",
       });
     }
 

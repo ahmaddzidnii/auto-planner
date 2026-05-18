@@ -147,10 +147,14 @@ export function buildSprintTimeline(
       .map((dependencyId) => endById.get(dependencyId))
       .filter((value): value is Date => Boolean(value));
 
-    const dependencyAnchor =
-      dependencyEnds.length > 0
-        ? new Date(Math.max(...dependencyEnds.map((value) => value.getTime())))
-        : sprintStart;
+    let dependencyAnchor = sprintStart;
+    if (dependencyEnds.length > 0) {
+      // Get the latest end date from all dependencies
+      const latestEnd = new Date(Math.max(...dependencyEnds.map((value) => value.getTime())));
+      // Task should start the day AFTER the dependency ends
+      dependencyAnchor = new Date(latestEnd.getTime());
+      dependencyAnchor.setDate(dependencyAnchor.getDate() + 1);
+    }
 
     // Tentukan resource key berdasarkan level dan skill
     const resourceKey = `${task.minimum_level}_${task.minimum_skill}`;
@@ -168,8 +172,9 @@ export function buildSprintTimeline(
         break;
       }
 
-      // Jika ada konflik, lanjutkan ke waktu resource selesai
+      // Jika ada konflik, lanjutkan ke hari setelah resource selesai
       startCandidate = new Date(currentResource.end.getTime());
+      startCandidate.setDate(startCandidate.getDate() + 1);
       attempts++;
     }
 
