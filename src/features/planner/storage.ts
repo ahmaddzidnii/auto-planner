@@ -3,6 +3,7 @@ import localforage from "localforage";
 import type { StoredSprintPlan } from "@/features/planner/types";
 
 const STORE_NAME = "sprint-plans";
+export const SPRINT_PLANS_CHANGED_EVENT = "sprint-plans-changed";
 
 const sprintStorage = localforage.createInstance({
     name: "ai-project-time-manager",
@@ -11,6 +12,34 @@ const sprintStorage = localforage.createInstance({
 
 export async function saveSprintPlan(plan: StoredSprintPlan): Promise<void> {
     await sprintStorage.setItem(plan.id, plan);
+}
+
+export async function updateSprintPlanName(id: string, sprintName: string): Promise<StoredSprintPlan | null> {
+    const plan = await getSprintPlanById(id);
+
+    if (!plan) {
+        return null;
+    }
+
+    const updatedPlan: StoredSprintPlan = {
+        ...plan,
+        input: {
+            ...plan.input,
+            sprint_name: sprintName,
+        },
+        output: {
+            ...plan.output,
+            sprint_name: sprintName,
+        },
+    };
+
+    await saveSprintPlan(updatedPlan);
+
+    return updatedPlan;
+}
+
+export async function deleteSprintPlan(id: string): Promise<void> {
+    await sprintStorage.removeItem(id);
 }
 
 export async function getSprintPlanById(

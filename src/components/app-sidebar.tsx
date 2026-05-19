@@ -3,9 +3,12 @@
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
-import { IconDotsVertical, IconEdit } from "@tabler/icons-react";
-import { listSprintPlans } from "@/features/planner/storage";
+import { IconDotsVertical, IconEdit, IconTrash } from "@tabler/icons-react";
+import { SPRINT_PLANS_CHANGED_EVENT, deleteSprintPlan, listSprintPlans, updateSprintPlanName } from "@/features/planner/storage";
 import type { StoredSprintPlan } from "@/features/planner/types";
+import { toast } from "sonner";
+
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 import {
   Sidebar,
@@ -28,6 +31,43 @@ export const AppSidebar = () => {
 
   const [history, setHistory] = useState<StoredSprintPlan[]>([]);
   const [historyLoading, setHistoryLoading] = useState(true);
+
+  function broadcastSprintPlanChange(message: string) {
+    toast.success(message);
+    window.dispatchEvent(new Event(SPRINT_PLANS_CHANGED_EVENT));
+  }
+
+  async function handleRenameSprint(plan: StoredSprintPlan) {
+    const nextName = window.prompt("Ubah nama sprint", plan.output.sprint_name)?.trim();
+
+    if (!nextName || nextName === plan.output.sprint_name) {
+      return;
+    }
+
+    const updatedPlan = await updateSprintPlanName(plan.id, nextName);
+
+    if (!updatedPlan) {
+      toast.error("Sprint tidak ditemukan.");
+      return;
+    }
+
+    setHistory((currentHistory) => currentHistory.map((item) => (item.id === updatedPlan.id ? updatedPlan : item)));
+
+    broadcastSprintPlanChange("Nama sprint berhasil diperbarui.");
+  }
+
+  async function handleDeleteSprint(plan: StoredSprintPlan) {
+    const confirmed = window.confirm(`Hapus analisis sprint \"${plan.output.sprint_name}\"? Tindakan ini tidak bisa dibatalkan.`);
+
+    if (!confirmed) {
+      return;
+    }
+
+    await deleteSprintPlan(plan.id);
+    setHistory((currentHistory) => currentHistory.filter((item) => item.id !== plan.id));
+
+    broadcastSprintPlanChange("Analisis sprint dihapus.");
+  }
 
   useEffect(() => {
     let active = true;
@@ -54,6 +94,21 @@ export const AppSidebar = () => {
       active = false;
     };
   }, [pathname]);
+
+  useEffect(() => {
+    function handleSprintPlanChange() {
+      void (async () => {
+        const plans = await listSprintPlans();
+        setHistory(plans);
+      })();
+    }
+
+    window.addEventListener(SPRINT_PLANS_CHANGED_EVENT, handleSprintPlanChange);
+
+    return () => {
+      window.removeEventListener(SPRINT_PLANS_CHANGED_EVENT, handleSprintPlanChange);
+    };
+  }, []);
 
   return (
     <Sidebar collapsible="icon">
@@ -109,17 +164,43 @@ export const AppSidebar = () => {
                     </span>
                   </button>
 
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="opacity-0 transition-opacity group-hover/item:opacity-100"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      // TODO: implement edit functionality
-                    }}
-                  >
-                    <IconDotsVertical className="size-4" />
-                  </Button>
+                  <DropdownMenu modal={false}>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="opacity-0 transition-opacity group-hover/item:opacity-100"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                        }}
+                      >
+                        <IconDotsVertical className="size-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent
+                      side="bottom"
+                      align="start"
+                      className="w-48"
+                    >
+                      <DropdownMenuItem
+                        onSelect={() => {
+                          void handleRenameSprint(plan);
+                        }}
+                      >
+                        <IconEdit className="size-4" />
+                        Edit nama sprint
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onSelect={() => {
+                          void handleDeleteSprint(plan);
+                        }}
+                      >
+                        <IconTrash className="size-4" />
+                        Hapus analisis sprint
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               ))
             )}

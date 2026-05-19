@@ -4,7 +4,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import { GanttChart } from "@/features/planner/components/gantt-chart";
-import { getSprintPlanById } from "@/features/planner/storage";
+import { SPRINT_PLANS_CHANGED_EVENT, getSprintPlanById } from "@/features/planner/storage";
 import { buildSprintTimeline } from "@/features/planner/timeline";
 import type { StoredSprintPlan, TimelineTask } from "@/features/planner/types";
 import { toast } from "sonner";
@@ -65,8 +65,15 @@ export function SprintDetailPage() {
 
     void loadPlan();
 
+    function handleSprintPlanChange() {
+      void loadPlan();
+    }
+
+    window.addEventListener(SPRINT_PLANS_CHANGED_EVENT, handleSprintPlanChange);
+
     return () => {
       active = false;
+      window.removeEventListener(SPRINT_PLANS_CHANGED_EVENT, handleSprintPlanChange);
     };
   }, [sprintId]);
 
