@@ -1,36 +1,105 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+<div align="center">
 
-## Getting Started
+<!-- Banner / Logo -->
+<img src="https://github.com/user-attachments/assets/d855e9bb-0bf2-451c-a30c-65bb87aa472f" alt="Project Banner" width="100%" style="border-radius: 12px;" />
+<br/>
 
-First, run the development server:
+## AutoPlanner
+### Tools Pembantu Dalam Pembuatan Gantt Chart Berbasis AI
 
+<br/>
+
+</div>
+
+## 🎯 Tentang Proyek
+
+**AutoPlanner** merupakan aplikasi berbasis web yang dirancang untuk membantu proses perencanaan proyek perangkat lunak secara lebih cepat, terstruktur, dan efisien dengan memanfaatkan teknologi Artificial Intelligence (AI). Aplikasi ini mampu membantu pengguna dalam menyusun task, estimasi durasi pekerjaan, pembagian resource, hingga menghasilkan visualisasi Gantt Chart secara otomatis.
+
+Proyek ini dikembangkan sebagai bagian dari tugas mata kuliah **Manajemen Proyek Perangkat Lunak** dengan tujuan menerapkan konsep perencanaan proyek, pengelolaan resource, serta penjadwalan kerja ke dalam sebuah sistem yang interaktif dan mudah digunakan.
+
+Dengan adanya AutoPlanner, proses pembuatan perencanaan sprint dan Gantt Chart yang biasanya dilakukan secara manual dapat menjadi lebih praktis, konsisten, dan membantu tim dalam memahami alur pengerjaan proyek secara lebih jelas.
+
+
+<br/>
+
+## 👥 Tim Pengembang
+
+Proyek ini dikerjakan oleh
+
+<div align="start">
+
+| No | Nama Lengkap | NIM | Peran |
+|:--:|:-------------|:---:|:-----:|
+| 1 | Ahmad Zidni Hidayat | 23106050077 | ... |
+| 2 | Rozin Gunagraha | 23106050084 | ... |
+| 3 | Syafiq Rustiawanto | 23106050094 | ... |
+
+</div>
+
+<br/>
+
+
+## 🛠️ Teknologi yang Digunakan
+
+| Kategori | Teknologi |
+|----------|-----------|
+| **Fullstack** |Nodejs, Next Js. JavaScript , React  |
+| **Database** |IndexedDB Browser |
+| **Version Control** | Git & GitHub |
+| **Tools** | Gemini API |
+
+
+---
+
+## ⚙️ Instalasi
+
+Ikuti langkah-langkah berikut untuk menjalankan proyek secara lokal:
+
+**1. Clone repositori ini**
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone https://github.com/ahmaddzidnii/auto-planner.git
+cd auto-planner
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+**2. Install dependensi**
+```bash
+npm install
+# atau
+yarn install
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+**3. Salin file konfigurasi environment**
+```bash
+cp .env.example .env
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+**4. Atur konfigurasi database di file `.env`**
+```env
+GEMINI_API_KEY=YOUR_GEMINI_API_KEY
+```
 
-## Learn More
+**6. Jalankan aplikasi**
+```bash
+npm run dev
+```
 
-To learn more about Next.js, take a look at the following resources:
+Aplikasi akan berjalan di `http://localhost:3000`
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+---
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 🚀 Cara Penggunaan
 
-## Deploy on Vercel
+1. Buka browser dan akses `http://localhost:3000`
+2. Eksplorasi fitur-fitur yang tersedia melalui menu navigasi
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+---
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+<br/>
+
+<div align="center">
+
+Dibuat dengan ❤️ oleh **Kelompok 4 - Manajemen Proyek Perangkat Lunak**
+
+⭐ Jangan lupa beri bintang jika proyek ini membantu!
+
+</div>
