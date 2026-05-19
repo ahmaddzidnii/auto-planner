@@ -17,6 +17,7 @@ export function GanttChart({
   description = "Timeline disusun otomatis berdasarkan hasil analisis sprint.",
   emptyMessage = "Tidak ada task pada rentang tanggal yang dipilih.",
 }: GanttChartProps) {
+  const MINIMUM_ROWS = 10;
   const hostRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -30,8 +31,29 @@ export function GanttChart({
 
       hostNode.innerHTML = "";
 
-      if (tasks.length === 0) {
-        return;
+      // Prepare tasks for the chart. Do not mutate the original `tasks` prop.
+      const originalTasks = tasks ?? [];
+      const chartTasks: TimelineTask[] = originalTasks.map((t) => ({ ...t }));
+
+      // If there are fewer than MINIMUM_ROWS, append dummy tasks so the
+      // rendered SVG grid contains at least MINIMUM_ROWS rows.
+      if (chartTasks.length < MINIMUM_ROWS) {
+        // Choose a safe reference start/end date. Prefer a real task's dates
+        // when available, otherwise fall back to today/today+1.
+        const refStart = chartTasks[0]?.start ? new Date(chartTasks[0].start) : new Date();
+        const refEnd = chartTasks[0]?.end ? new Date(chartTasks[0].end) : new Date(refStart.getTime() + 24 * 60 * 60 * 1000);
+
+        const missing = MINIMUM_ROWS - chartTasks.length;
+        for (let i = 0; i < missing; i++) {
+          chartTasks.push({
+            id: `dummy-${Date.now().toString(36)}-${i}`,
+            name: "",
+            start: new Date(refStart),
+            end: new Date(refEnd),
+            progress: 0,
+            custom_class: "dummy-row",
+          });
+        }
       }
 
       const { default: Gantt } = await import("frappe-gantt");
@@ -40,7 +62,7 @@ export function GanttChart({
         return;
       }
 
-      new Gantt(hostNode, tasks, {
+      new Gantt(hostNode, chartTasks, {
         view_mode: "Day",
         language: "id",
       });

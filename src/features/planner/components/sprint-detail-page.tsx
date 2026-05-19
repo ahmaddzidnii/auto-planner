@@ -9,33 +9,6 @@ import { buildSprintTimeline } from "@/features/planner/timeline";
 import type { StoredSprintPlan, TimelineTask } from "@/features/planner/types";
 import { toast } from "sonner";
 
-function getMonthRange(dateValue: string): { monthStart: Date; monthEnd: Date } {
-  const monthStart = new Date(`${dateValue}T00:00:00`);
-  monthStart.setDate(1);
-  monthStart.setHours(0, 0, 0, 0);
-
-  const monthEnd = new Date(monthStart);
-  monthEnd.setMonth(monthEnd.getMonth() + 1, 0);
-  monthEnd.setHours(23, 59, 59, 999);
-
-  return { monthStart, monthEnd };
-}
-
-function clipTaskToRange(task: TimelineTask, monthStart: Date, monthEnd: Date): TimelineTask | null {
-  if (task.end < monthStart || task.start > monthEnd) {
-    return null;
-  }
-
-  const start = task.start < monthStart ? new Date(monthStart) : task.start;
-  const end = task.end > monthEnd ? new Date(monthEnd) : task.end;
-
-  return {
-    ...task,
-    start,
-    end,
-  };
-}
-
 export function SprintDetailPage() {
   const params = useParams<{ id: string }>();
   const sprintId = params?.id;
@@ -77,7 +50,7 @@ export function SprintDetailPage() {
     };
   }, [sprintId]);
 
-  const monthBoundTimeline = useMemo(() => {
+  const timelineTasks = useMemo(() => {
     if (!plan) {
       return [] as TimelineTask[];
     }
@@ -90,12 +63,12 @@ export function SprintDetailPage() {
       holidayDates: plan.input.holiday_dates,
     });
 
-    const { monthStart, monthEnd } = getMonthRange(plan.output.sprint_start_date);
-
-    return timeline.map((task) => clipTaskToRange(task, monthStart, monthEnd)).filter((task): task is TimelineTask => task !== null);
+    return timeline;
   }, [plan]);
 
   const router = useRouter();
+
+  console.log(plan);
 
   useEffect(() => {
     if (!isLoading && !plan) {
@@ -187,10 +160,10 @@ export function SprintDetailPage() {
       </section>
 
       <GanttChart
-        tasks={monthBoundTimeline}
+        tasks={timelineTasks}
         title="Gantt Chart"
-        description="Timeline di bawah difokuskan hanya pada task yang berada di bulan tanggal mulai sprint."
-        emptyMessage="Tidak ada task yang jatuh pada bulan ini."
+        description="Timeline di bawah menampilkan seluruh task dalam sprint."
+        emptyMessage="Tidak ada task pada sprint ini."
       />
     </main>
   );

@@ -336,3 +336,23 @@
   fill: var(--g-weekend-highlight-color);
   transition: fill 0.1s ease;
 }
+
+/* Dummy task styling: hide dummy bars/labels but keep grid rows for visual consistency */
+.gantt [class*="dummy-row"],
+.gantt .bar-wrapper.dummy-row,
+.gantt .bar.dummy-row,
+.gantt .bar-label.dummy-row,
+.gantt .grid-row.dummy-row {
+  display: none !important;
+  pointer-events: none !important;
+}
+
+/* Defensive rule: any element which contains 'dummy-row' in its class should not show text */
+.gantt [class*="dummy-row"] text {
+  display: none !important;
+}
+
+/* Ensure the main gantt container allows scrolling when rows exceed viewport */
+.gantt-container {
+  overflow: auto;
+}
