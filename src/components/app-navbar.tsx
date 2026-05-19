@@ -56,15 +56,15 @@ export const AppNavbar = () => {
                 {[
                   {
                     name: "Ahmad Zidni Hidayat",
-                    nim: "21120119130071",
+                    nim: "23106050077",
                   },
                   {
                     name: "Rozin Gunagraha",
-                    nim: "21120119130072",
+                    nim: "23106050084",
                   },
                   {
                     name: "Syafiq Rustiawanto",
-                    nim: "21120119130073",
+                    nim: "23106050094",
                   },
                 ].map((author) => (
                   <DropdownMenuItem
